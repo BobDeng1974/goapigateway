@@ -79,9 +79,11 @@ func StartTestServer() {
 	log.Fatal(confServer.ListenAndServe())
 }
 
+```
+
 ## Example of curl client simulating the Api Gateway Aws
 
 ```
-curl -H 'Authorization:tyladfadiwkxceieixweiex747' --form "{}" http://localhost:8080/postest
+curl -H 'Authorization:tyladfadiwkxceieixweiex747' --form "{}" http://localhost:9001/postest
 
 ```
