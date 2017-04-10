@@ -22,24 +22,29 @@
 * @since       Version 0.1
 */
 
-// This program aims to test the calls that a restful server could receive from a specific client.
-// Our client that will trigger the requests is the Aws service, Api Gateway.
-// The objective is to test all incoming messages from the Aws Api Gateway and implement
-// them as optimally as possible, showing how to handle each type of request,
-// whether it is PUT, POST, GET, DELETE, HEAD, OPTIONS.
-// It also aims to document and show how to mount a server restful
-// integrated with Api Gateway from Aws.
-// Every test can be automated, but in the beginning for didactic reasons
-// we will do all the manual process, so that we can thoroughly understand
-// its operation and in the second moment propose an automation of process step.
+// This program is a restful server, its purpose is to receive multiple POST requests,
+// GET so that we can test the various ways to send files to a restful server.
+// Our goal is to discover the different ways upload and receive upload so that
+// we can implement our file server.
+// The Amazon is allowed to send binaries to its Api Gateway,
+// and it is possible to use lambda functions so that the entire upload process is done by the
+// Api Gateway without necessarily needing to send direct to a restful server,
+// but our goal is to send direct to our server Restful
+// We will use curl as our client to test our submissions and we will also use
+// the Amazon Api Gateway and see if it is possible to send a binary to our restful
+// server directly without using lambda functions.
+// Each test can be automated, but at the beginning for didactic reasons we will do the
+// entire process manual so that we can fully understand its operation.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
@@ -54,6 +59,8 @@ type Configs struct {
 	Host       string `json:"host"`
 	Schema     string `json:"shcema"`
 	ServerHost string `json:"serverhost"`
+	UploadSize int64  `json:"uploadsize"`
+	PathLocal  string `json:"pathlocal"`
 }
 
 // Our global variables
@@ -62,6 +69,7 @@ var (
 	returns       string
 	confServer    *http.Server
 	AUTHORIZATION = `bc8c154ebabc6f3da724e9x5fef79238`
+	objason       Configs
 )
 
 // This method ConfigJson sets up our
@@ -69,7 +77,7 @@ var (
 func ConfigJson() string {
 
 	// Defining the values of our config
-	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "9001", Host: "", Schema: "http", ServerHost: "localhost"}
+	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "80", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
 
 	// Converting our struct into json format
 	cjson, err := json.Marshal(data)
@@ -84,12 +92,20 @@ func ConfigJson() string {
 // of our config so that it can be accessed
 func Config() *Configs {
 
-	var objason Configs
+	// We are implementing singleton for this object,
+	// every time it is instantiated it does
+	// not redo it it only resends the object
+	if objason.Domain != "" {
 
-	jsonT := []byte(ConfigJson())
-	json.Unmarshal(jsonT, &objason)
+		return &objason
 
-	return &objason
+	} else {
+
+		jsonT := []byte(ConfigJson())
+		json.Unmarshal(jsonT, &objason)
+
+		return &objason
+	}
 }
 
 // This method Message is to return our messages
@@ -161,19 +177,20 @@ type JsonPostTest1 struct {
 // that arrives and everything that can come out.
 func StartTestServer() {
 
+	// Instancing config
 	cfg := Config()
 
+	// Presentation on the
+	// screen of the start of our server
 	color.Cyan("Testing services")
 	color.Yellow("successfully...")
-
 	postest := cfg.Schema + "://" + cfg.ServerHost + ":" + cfg.ServerPort + "/postest"
-
 	color.Red("POST " + postest)
 	color.Red("GET  " + postest)
-
 	color.Yellow("Starting service...")
 	color.Green("Host: " + cfg.ServerHost)
 	color.Green("Schema: " + cfg.Schema)
+	color.Green("Port: " + cfg.ServerPort)
 	color.Green("Port: " + cfg.ServerPort)
 
 	///create route
@@ -191,8 +208,9 @@ func StartTestServer() {
 	router.
 		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
 
+			// Showing some important variables
+			// that come from our requests
 			fmt.Println("Fired method ..")
-
 			fmt.Println("Header: ", r.Header)
 			fmt.Println("Host: ", r.Host)
 			fmt.Println("Method: ", r.Method)
@@ -206,16 +224,22 @@ func StartTestServer() {
 			fmt.Println("Content-type: ", r.Header.Get("Content-Type"))
 			fmt.Println("Autorization: ", r.Header.Get("Authorization"))
 
-			//AWS
+			// AWS
 			fmt.Println("AWS-Trace: ", r.Header.Get("X-Amzn-Trace-Id"))
 			fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
 
+			// Some important variables
 			fmt.Println("Protocolo: ", r.Proto)
 			fmt.Println("ProtoMajor: ", r.ProtoMajor)
 			fmt.Println("ProtoMinor: ", r.ProtoMinor)
 			fmt.Println("GetBody: ", r.GetBody)
 			fmt.Println("Body: ", r.Body)
 
+			// upload octet-stream
+			// Name-File
+			fmt.Println("Name-File: ", r.Header.Get("Name-File"))
+
+			// Basic authentication
 			KEY, KEY_PASS, _ := r.BasicAuth()
 			fmt.Println("KEY:", KEY, "PASS: ", KEY_PASS)
 
@@ -254,9 +278,9 @@ func StartTestServer() {
 					fmt.Fprintln(w, msgjson)
 
 				} else {
+					//else if r.Header.Get("Content-Type") == "image/jpg" || r.Header.Get("Content-Type") == "image/png" || r.Header.Get("Content-Type") == "application/octet-stream" {
 
-					msgjson := JsonMsg(500, "Set Content-Type correctly: Allowed: application / x-www-form-urlencoded, application / json")
-					fmt.Fprintln(w, msgjson)
+					UploadFileEasy(w, r)
 
 				}
 
@@ -267,6 +291,7 @@ func StartTestServer() {
 			}
 		})
 
+	// Config to upload our server
 	confServer = &http.Server{
 
 		Handler: router,
@@ -278,4 +303,109 @@ func StartTestServer() {
 	}
 
 	log.Fatal(confServer.ListenAndServe())
+}
+
+// Method UploadFileEasy responsible for simulating our types of uploads,
+// types are: multipart / form-data using form or option -F | --form
+// of curl, application / octet-stream using --data-binary
+func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
+
+	cfg := Config()
+
+	// A directory is created by
+	// the key we are simulating
+	acessekey := "123456"
+
+	// This header was defined by our restful
+	// server so we can understand and know
+	// that the submitted type is a binary upload
+	nameFileUp := r.Header.Get("Name-File")
+
+	// Upload octet-stream
+	if nameFileUp != "" {
+
+		// In amazon does not receive multipart / form-data only application
+		// / octet-stream ie --data-binary or instead of --form nameupload = @,
+		// then we implement the 2 forms for our upload test
+		ff, _ := os.OpenFile(cfg.PathLocal+"/"+nameFileUp, os.O_WRONLY|os.O_CREATE, 0777)
+		defer ff.Close()
+		sizef, _ := io.Copy(ff, r.Body)
+		w.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", sizef)))
+
+		msgjson := JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
+		fmt.Fprintln(w, msgjson)
+
+	} else {
+
+		sizeMaxUpload := r.ContentLength / 1048576 ///Mb
+
+		if sizeMaxUpload > cfg.UploadSize {
+
+			fmt.Println("The maximum upload size: ", cfg.UploadSize, "Mb is large: ", sizeMaxUpload, "Mb", " in bytes: ", r.ContentLength)
+			fmt.Fprintln(w, "", 500, "Unsupported file size max: ", cfg.UploadSize, "Mb")
+
+		} else {
+
+			errup := r.ParseMultipartForm(32 << 20)
+			if errup != nil {
+				log.Printf("ERROR UPLOAD PARSE: %s\n", errup)
+				http.Error(w, errup.Error(), 500)
+				return
+			}
+
+			file, handler, errf := r.FormFile("fileupload")
+			if errf != nil {
+				log.Println(errf.Error())
+				http.Error(w, errf.Error(), http.StatusBadRequest)
+				return
+			}
+			defer file.Close()
+
+			if errf != nil {
+				color.Red("Error big file, try again!")
+				http.Error(w, "Error parsing uploaded file: "+errf.Error(), http.StatusBadRequest)
+				return
+			}
+
+			defer file.Close()
+
+			///create dir to key
+			pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+
+			existPath, _ := os.Stat(pathUpKeyUser)
+
+			if existPath == nil {
+
+				// create path
+				os.MkdirAll(pathUpKeyUser, 0777)
+			}
+
+			pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
+
+			// copy file and write
+			f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
+			defer f.Close()
+			sizef, _ := io.Copy(f, file)
+
+			//up_size := fmt.Sprintf("%v", r.ContentLength)
+
+			//To display results on server
+			name := strings.Split(handler.Filename, ".")
+			color.Red("File name: %s\n", name[0])
+			color.Yellow("extension: %s\n", name[1])
+
+			color.Yellow("size file: %v\n", sizeMaxUpload)
+			color.Yellow("allowed: %v\n", cfg.UploadSize)
+
+			color.Yellow("copied: %v bytes\n", sizef)
+			color.Yellow("copied: %v Kb\n", sizef/1024)
+			color.Yellow("copied: %v Mb\n", sizef/1048576)
+
+			msgjson := JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+			fmt.Fprintln(w, msgjson)
+
+		}
+
+	}
+
 }
