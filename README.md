@@ -65,144 +65,6 @@ func ConfigJson() string {
 
 	return string(cjson)
 }
-```
-
-Body of main function StartTestServer
-
-```go
-
-// This method StartTestServer that will start our server,
-// and mount our handler so we can work everything
-// that arrives and everything that can come out.
-func StartTestServer() {
-
-	// Instancing config
-	cfg := Config()
-
-	// Presentation on the
-	// screen of the start of our server
-	color.Cyan("Testing services")
-	color.Yellow("successfully...")
-	postest := cfg.Schema + "://" + cfg.ServerHost + ":" + cfg.ServerPort + "/postest"
-	color.Red("POST " + postest)
-	color.Red("GET  " + postest)
-	color.Yellow("Starting service...")
-	color.Green("Host: " + cfg.ServerHost)
-	color.Green("Schema: " + cfg.Schema)
-	color.Green("Port: " + cfg.ServerPort)
-	color.Green("Port: " + cfg.ServerPort)
-
-	///create route
-	router := mux.NewRouter().StrictSlash(true)
-
-	router.Headers("Content-Type", "application/json",
-		"X-Requested-With", "XMLHttpRequest")
-
-	// Every time trying to access our api without a
-	// method it fires to the root and sends a welcome message
-	router.Handle("/", http.FileServer(http.Dir("msg")))
-
-	// This handler is that we will test all the possibilities
-	// that it can receive when the method is post coming from the api gateway of aws
-	router.
-		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
-
-			// Showing some important variables
-			// that come from our requests
-			fmt.Println("Fired method ..")
-			fmt.Println("Header: ", r.Header)
-			fmt.Println("Host: ", r.Host)
-			fmt.Println("Method: ", r.Method)
-			fmt.Println("RemoteAddr: ", r.RemoteAddr)
-			fmt.Println("RequestURI: ", r.RequestURI)
-			fmt.Println("Response: ", r.Response)
-			fmt.Println("URL: ", r.URL)
-			fmt.Println("TLS: ", r.TLS)
-			fmt.Println("Agent: ", r.UserAgent())
-			fmt.Println("ContentLength: ", r.ContentLength)
-			fmt.Println("Content-type: ", r.Header.Get("Content-Type"))
-			fmt.Println("Autorization: ", r.Header.Get("Authorization"))
-
-			// AWS
-			fmt.Println("AWS-Trace: ", r.Header.Get("X-Amzn-Trace-Id"))
-			fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
-
-			// Some important variables
-			fmt.Println("Protocolo: ", r.Proto)
-			fmt.Println("ProtoMajor: ", r.ProtoMajor)
-			fmt.Println("ProtoMinor: ", r.ProtoMinor)
-			fmt.Println("GetBody: ", r.GetBody)
-			fmt.Println("Body: ", r.Body)
-
-			// upload octet-stream
-			// Name-File
-			fmt.Println("Name-File: ", r.Header.Get("Name-File"))
-
-			// Basic authentication
-			KEY, KEY_PASS, _ := r.BasicAuth()
-			fmt.Println("KEY:", KEY, "PASS: ", KEY_PASS)
-
-			if r.Method == "POST" || r.Method == "PUT" || r.Method == "GET" {
-
-				// When the receipt is in json format
-				if r.Header.Get("Content-Type") == "application/json" {
-
-					objJson := JsonPostTest1{}
-					errj := json.NewDecoder(r.Body).Decode(&objJson)
-
-					if errj == nil {
-
-						color.Yellow("When the receipt is in json format..")
-						email := objJson.Email
-						password := objJson.Password
-
-						fmt.Println("email: ", email)
-						fmt.Println("password: ", password)
-
-						msgjson := JsonMsg(200, "ok")
-						fmt.Fprintln(w, msgjson)
-
-					} else {
-
-						fmt.Println("Error ..", errj)
-					}
-				} else if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" { // application/x-www-form-urlencoded default POST
-
-					// When the receipt is a default
-					color.Green("When the receipt is a default")
-					fmt.Println("email: ", r.PostFormValue("email"))
-					fmt.Println("password: ", r.PostFormValue("password"))
-
-					msgjson := JsonMsg(200, "ok")
-					fmt.Fprintln(w, msgjson)
-
-				} else {
-					//else if r.Header.Get("Content-Type") == "image/jpg" || r.Header.Get("Content-Type") == "image/png" || r.Header.Get("Content-Type") == "application/octet-stream" {
-
-					UploadFileEasy(w, r)
-
-				}
-
-			} else {
-
-				msgjson := JsonMsg(500, "Not authorized / Allowed method POST")
-				fmt.Fprintln(w, msgjson)
-			}
-		})
-
-	// Config to upload our server
-	confServer = &http.Server{
-
-		Handler: router,
-		Addr:    cfg.Host + ":" + cfg.ServerPort,
-
-		// Good idea, good live!!!
-		//WriteTimeout: 10 * time.Second,
-		//ReadTimeout:  10 * time.Second,
-	}
-
-	log.Fatal(confServer.ListenAndServe())
-}
 
 ```
 
@@ -210,25 +72,47 @@ Body of main function UploadFileEasy
 
 ```go
 
+
 // Method UploadFileEasy responsible for simulating our types of uploads,
 // types are: multipart / form-data using form or option -F | --form
 // of curl, application / octet-stream using --data-binary
 func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 
-	cfg := conf.Config()
-
-	// A directory is created by
-	// the key we are simulating
-	acessekey := "123456"
+	nameFileUp := r.Header.Get("Name-File")
 
 	// This header was defined by our restful
 	// server so we can understand and know
 	// that the submitted type is a binary upload
+
+	if nameFileUp != "" {
+
+		uploadBinary(w, r)
+
+	} else {
+
+		uploadFormFile(w, r)
+
+	}
+}
+
+```
+
+Body of main function uploadBinary
+
+```go
+
+// This method uploadBinary only receives files coming in binary format,
+// it will copy to disk what is coming via http
+func uploadBinary(w http.ResponseWriter, r *http.Request) {
+
+	cfg := conf.Config()
+
 	nameFileUp := r.Header.Get("Name-File")
 
 	// Upload octet-stream
 	if nameFileUp != "" {
 
+		// Creating the structure if it does not exist
 		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
 		existPath, _ := os.Stat(pathUpKeyUser)
 		if existPath == nil {
@@ -236,6 +120,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 			os.MkdirAll(pathUpKeyUser, 0777)
 		}
 
+		// Setting the path
 		pathUpKeyUserFull := pathUpKeyUser + "/" + nameFileUp
 
 		// In amazon does not receive multipart / form-data only application
@@ -243,7 +128,11 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 		// then we implement the 2 forms for our upload test
 		ff, _ := os.OpenFile(pathUpKeyUserFull, os.O_WRONLY|os.O_CREATE, 0777)
 		defer ff.Close()
+
+		// Copying the contents of http body to our file
 		sizef, _ := io.Copy(ff, r.Body)
+
+		// Writing in our response
 		w.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", sizef)))
 
 		color.Red("File name: %s\n", nameFileUp)
@@ -254,82 +143,104 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
 		fmt.Fprintln(w, msgjson)
 
+	}
+}
+
+```
+
+Body of main function uploadFormFile
+
+```go
+
+// This method uploadFormFile only receives files coming in
+// the multipart / form-data format, ie comes from a form
+// sent by our client
+func uploadFormFile(w http.ResponseWriter, r *http.Request) {
+
+	cfg := conf.Config()
+
+	// Validating the upload FormFile
+	errup := r.ParseMultipartForm(32 << 20)
+	if errup != nil {
+
+		log.Printf("Error: Content-type or submitted format is incorrect to upload  %s\n", errup)
+		msgjson := conf.JsonMsg(500, errup.Error())
+		fmt.Fprintln(w, msgjson)
+
+		return
+	}
+
+	// Upload multipart/form-data
+	sizeMaxUpload := r.ContentLength / 1048576 ///Mb
+
+	if sizeMaxUpload > cfg.UploadSize {
+
+		fmt.Println("The maximum upload size: ", cfg.UploadSize, "Mb is large: ", sizeMaxUpload, "Mb", " in bytes: ", r.ContentLength)
+
+		msgjson := conf.JsonMsg(500, "Unsupported file size max:"+fmt.Sprintf("%v", cfg.UploadSize)+"Mb")
+		fmt.Fprintln(w, msgjson)
+
 	} else {
 
-		// Upload multipart/form-data
-		sizeMaxUpload := r.ContentLength / 1048576 ///Mb
+		// Looking for the file in the FormFile method
+		file, handler, errf := r.FormFile("fileupload")
 
-		if sizeMaxUpload > cfg.UploadSize {
+		if errf != nil {
 
-			fmt.Println("The maximum upload size: ", cfg.UploadSize, "Mb is large: ", sizeMaxUpload, "Mb", " in bytes: ", r.ContentLength)
-			fmt.Fprintln(w, "", 500, "Unsupported file size max: ", cfg.UploadSize, "Mb")
+			log.Println(errf.Error())
+			//http.Error(w, errf.Error(), http.StatusBadRequest)
 
-		} else {
-
-			errup := r.ParseMultipartForm(32 << 20)
-			if errup != nil {
-				log.Printf("ERROR UPLOAD PARSE: %s\n", errup)
-				http.Error(w, errup.Error(), 500)
-				return
-			}
-
-			file, handler, errf := r.FormFile("fileupload")
-			if errf != nil {
-				log.Println(errf.Error())
-				http.Error(w, errf.Error(), http.StatusBadRequest)
-				return
-			}
-			defer file.Close()
-
-			if errf != nil {
-				color.Red("Error big file, try again!")
-				http.Error(w, "Error parsing uploaded file: "+errf.Error(), http.StatusBadRequest)
-				return
-			}
-
-			defer file.Close()
-
-			///create dir to key
-			pathUpKeyUser := cfg.PathLocal + "/" + acessekey
-
-			existPath, _ := os.Stat(pathUpKeyUser)
-
-			if existPath == nil {
-
-				// create path
-				os.MkdirAll(pathUpKeyUser, 0777)
-			}
-
-			pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
-
-			// copy file and write
-			f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
-			defer f.Close()
-			sizef, _ := io.Copy(f, file)
-
-			//up_size := fmt.Sprintf("%v", r.ContentLength)
-
-			//To display results on server
-			name := strings.Split(handler.Filename, ".")
-			color.Red("File name: %s\n", name[0])
-			color.Yellow("extension: %s\n", name[1])
-
-			color.Yellow("size file: %v\n", sizeMaxUpload)
-			color.Yellow("allowed: %v\n", cfg.UploadSize)
-
-			color.Yellow("copied: %v bytes\n", sizef)
-			color.Yellow("copied: %v Kb\n", sizef/1024)
-			color.Yellow("copied: %v Mb\n", sizef/1048576)
-
-			msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+			msgjson := conf.JsonMsg(500, errf.Error())
 			fmt.Fprintln(w, msgjson)
+			return
+		}
+		defer file.Close()
 
+		if errf != nil {
+			color.Red("Error big file, try again!")
+			http.Error(w, "Error parsing uploaded file: "+errf.Error(), http.StatusBadRequest)
+			return
 		}
 
+		defer file.Close()
+
+		///create dir to key
+		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+
+		existPath, _ := os.Stat(pathUpKeyUser)
+
+		if existPath == nil {
+
+			// create path
+			os.MkdirAll(pathUpKeyUser, 0777)
+		}
+
+		pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
+
+		// copy file and write
+		f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
+		defer f.Close()
+
+		// Copying the FormFile file to our local disk file
+		sizef, _ := io.Copy(f, file)
+
+		//To display results on server
+		name := strings.Split(handler.Filename, ".")
+		color.Red("File name: %s\n", name[0])
+		color.Yellow("extension: %s\n", name[1])
+
+		color.Yellow("size file: %v\n", sizeMaxUpload)
+		color.Yellow("allowed: %v\n", cfg.UploadSize)
+
+		color.Yellow("copied: %v bytes\n", sizef)
+		color.Yellow("copied: %v Kb\n", sizef/1024)
+		color.Yellow("copied: %v Mb\n", sizef/1048576)
+
+		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+		fmt.Fprintln(w, msgjson)
 	}
 
 }
-
 
 ```
 
