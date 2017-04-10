@@ -57,6 +57,10 @@ var (
 	returns       string
 	confServer    *http.Server
 	AUTHORIZATION = `bc8c154ebabc6f3da724e9x5fef79238`
+
+	// A directory is created by
+	// the key we are simulating
+	acessekey = "123456"
 )
 
 // To return the messages
@@ -236,20 +240,35 @@ func showMsgHandler(r *http.Request) {
 // of curl, application / octet-stream using --data-binary
 func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 
-	cfg := conf.Config()
-
-	// A directory is created by
-	// the key we are simulating
-	acessekey := "123456"
+	nameFileUp := r.Header.Get("Name-File")
 
 	// This header was defined by our restful
 	// server so we can understand and know
 	// that the submitted type is a binary upload
+
+	if nameFileUp != "" {
+
+		uploadBinary(w, r)
+
+	} else {
+
+		uploadFormFile(w, r)
+
+	}
+}
+
+// This method uploadBinary only receives files coming in binary format,
+// it will copy to disk what is coming via http
+func uploadBinary(w http.ResponseWriter, r *http.Request) {
+
+	cfg := conf.Config()
+
 	nameFileUp := r.Header.Get("Name-File")
 
 	// Upload octet-stream
 	if nameFileUp != "" {
 
+		// Creating the structure if it does not exist
 		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
 		existPath, _ := os.Stat(pathUpKeyUser)
 		if existPath == nil {
@@ -257,6 +276,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 			os.MkdirAll(pathUpKeyUser, 0777)
 		}
 
+		// Setting the path
 		pathUpKeyUserFull := pathUpKeyUser + "/" + nameFileUp
 
 		// In amazon does not receive multipart / form-data only application
@@ -264,7 +284,11 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 		// then we implement the 2 forms for our upload test
 		ff, _ := os.OpenFile(pathUpKeyUserFull, os.O_WRONLY|os.O_CREATE, 0777)
 		defer ff.Close()
+
+		// Copying the contents of http body to our file
 		sizef, _ := io.Copy(ff, r.Body)
+
+		// Writing in our response
 		w.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", sizef)))
 
 		color.Red("File name: %s\n", nameFileUp)
@@ -275,78 +299,95 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
 		fmt.Fprintln(w, msgjson)
 
+	}
+}
+
+// This method uploadFormFile only receives files coming in
+// the multipart / form-data format, ie comes from a form
+// sent by our client
+func uploadFormFile(w http.ResponseWriter, r *http.Request) {
+
+	cfg := conf.Config()
+
+	// Validating the upload FormFile
+	errup := r.ParseMultipartForm(32 << 20)
+	if errup != nil {
+
+		log.Printf("Error: Content-type or submitted format is incorrect to upload  %s\n", errup)
+		msgjson := conf.JsonMsg(500, errup.Error())
+		fmt.Fprintln(w, msgjson)
+
+		return
+	}
+
+	// Upload multipart/form-data
+	sizeMaxUpload := r.ContentLength / 1048576 ///Mb
+
+	if sizeMaxUpload > cfg.UploadSize {
+
+		fmt.Println("The maximum upload size: ", cfg.UploadSize, "Mb is large: ", sizeMaxUpload, "Mb", " in bytes: ", r.ContentLength)
+
+		msgjson := conf.JsonMsg(500, "Unsupported file size max:"+fmt.Sprintf("%v", cfg.UploadSize)+"Mb")
+		fmt.Fprintln(w, msgjson)
+
 	} else {
 
-		// Upload multipart/form-data
-		sizeMaxUpload := r.ContentLength / 1048576 ///Mb
+		// Looking for the file in the FormFile method
+		file, handler, errf := r.FormFile("fileupload")
 
-		if sizeMaxUpload > cfg.UploadSize {
+		if errf != nil {
 
-			fmt.Println("The maximum upload size: ", cfg.UploadSize, "Mb is large: ", sizeMaxUpload, "Mb", " in bytes: ", r.ContentLength)
-			fmt.Fprintln(w, "", 500, "Unsupported file size max: ", cfg.UploadSize, "Mb")
+			log.Println(errf.Error())
+			//http.Error(w, errf.Error(), http.StatusBadRequest)
 
-		} else {
-
-			errup := r.ParseMultipartForm(32 << 20)
-			if errup != nil {
-				log.Printf("ERROR UPLOAD PARSE: %s\n", errup)
-				http.Error(w, errup.Error(), 500)
-				return
-			}
-
-			file, handler, errf := r.FormFile("fileupload")
-			if errf != nil {
-				log.Println(errf.Error())
-				http.Error(w, errf.Error(), http.StatusBadRequest)
-				return
-			}
-			defer file.Close()
-
-			if errf != nil {
-				color.Red("Error big file, try again!")
-				http.Error(w, "Error parsing uploaded file: "+errf.Error(), http.StatusBadRequest)
-				return
-			}
-
-			defer file.Close()
-
-			///create dir to key
-			pathUpKeyUser := cfg.PathLocal + "/" + acessekey
-
-			existPath, _ := os.Stat(pathUpKeyUser)
-
-			if existPath == nil {
-
-				// create path
-				os.MkdirAll(pathUpKeyUser, 0777)
-			}
-
-			pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
-
-			// copy file and write
-			f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
-			defer f.Close()
-			sizef, _ := io.Copy(f, file)
-
-			//up_size := fmt.Sprintf("%v", r.ContentLength)
-
-			//To display results on server
-			name := strings.Split(handler.Filename, ".")
-			color.Red("File name: %s\n", name[0])
-			color.Yellow("extension: %s\n", name[1])
-
-			color.Yellow("size file: %v\n", sizeMaxUpload)
-			color.Yellow("allowed: %v\n", cfg.UploadSize)
-
-			color.Yellow("copied: %v bytes\n", sizef)
-			color.Yellow("copied: %v Kb\n", sizef/1024)
-			color.Yellow("copied: %v Mb\n", sizef/1048576)
-
-			msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+			msgjson := conf.JsonMsg(500, errf.Error())
 			fmt.Fprintln(w, msgjson)
+			return
+		}
+		defer file.Close()
 
+		if errf != nil {
+			color.Red("Error big file, try again!")
+			http.Error(w, "Error parsing uploaded file: "+errf.Error(), http.StatusBadRequest)
+			return
 		}
 
+		defer file.Close()
+
+		///create dir to key
+		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+
+		existPath, _ := os.Stat(pathUpKeyUser)
+
+		if existPath == nil {
+
+			// create path
+			os.MkdirAll(pathUpKeyUser, 0777)
+		}
+
+		pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
+
+		// copy file and write
+		f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
+		defer f.Close()
+
+		// Copying the FormFile file to our local disk file
+		sizef, _ := io.Copy(f, file)
+
+		//To display results on server
+		name := strings.Split(handler.Filename, ".")
+		color.Red("File name: %s\n", name[0])
+		color.Yellow("extension: %s\n", name[1])
+
+		color.Yellow("size file: %v\n", sizeMaxUpload)
+		color.Yellow("allowed: %v\n", cfg.UploadSize)
+
+		color.Yellow("copied: %v bytes\n", sizef)
+		color.Yellow("copied: %v Kb\n", sizef/1024)
+		color.Yellow("copied: %v Mb\n", sizef/1048576)
+
+		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+		fmt.Fprintln(w, msgjson)
 	}
 
 }
