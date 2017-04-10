@@ -382,7 +382,6 @@ curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
 ```
 curl -i -X POST localhost:9001/postest \
 -u API_KEY:383883jef903xxxx838xxxx \
--H "Content-Type: application/json" \
 -H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
 -d -d "email=jefferson&password=3838373773" 
 
@@ -400,7 +399,7 @@ curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
 
 ```
 
-## We are sending in a single request fields and value of a form and a file to upload
+## In a single request we send form fields and an upload file
 
 The Amazon Gateway Api unfortunately does not accept --form for only binary file uploads then it will 
 not work using the upload to Amazon.
@@ -412,7 +411,7 @@ curl -i --request POST localhost:9001/postest \
 --form "fileupload=@files/file1.jpg"
 ```
 
-## We are sending a form with field and value and several files to upload in a same request
+## In a single request we send form fields and multiple files to upload
 
 Unfortunately Amazon does not support --form / or better multipart / form-data for sending files only --data-binary
 
