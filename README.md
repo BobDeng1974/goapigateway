@@ -13,6 +13,60 @@ Each test can be automated, but at the beginning for didactic reasons we will do
 - https://github.com/fatih/color - Help define the colors in the terminal
 
 
+Body of main type struct
+
+```go
+
+// Structure of our server configurations
+type Configs struct {
+	Domain     string `json:"domain"`
+	Process    string `json:"process"`
+	Ping       string `json:"ping"`
+	ServerPort string `json:"serverport"`
+	Host       string `json:"host"`
+	Schema     string `json:"shcema"`
+	ServerHost string `json:"serverhost"`
+	UploadSize int64  `json:"uploadsize"`
+	PathLocal  string `json:"pathlocal"`
+}
+
+```
+
+Body of main variables
+
+```go
+// Our global variables
+var (
+	err           error
+	returns       string
+	confServer    *http.Server
+	AUTHORIZATION = `bc8c154ebabc6f3da724e9x5fef79238`
+	objason       Configs
+)
+
+```
+
+Body of main function ConfigJson
+
+```go
+
+// This method ConfigJson sets up our
+// server variables from our struct
+func ConfigJson() string {
+
+	// Defining the values of our config
+	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "9001", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
+
+	// Converting our struct into json format
+	cjson, err := json.Marshal(data)
+	if err != nil {
+		// handle err
+	}
+
+	return string(cjson)
+}
+```
+
 Body of main function StartTestServer
 
 ```go
@@ -150,6 +204,12 @@ func StartTestServer() {
 	log.Fatal(confServer.ListenAndServe())
 }
 
+```
+
+Body of main function UploadFileEasy
+
+```go
+
 // Method UploadFileEasy responsible for simulating our types of uploads,
 // types are: multipart / form-data using form or option -F | --form
 // of curl, application / octet-stream using --data-binary
@@ -260,7 +320,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 ## Example of curl client Sending file in binary format
 
 ```
-curl --request POST http://localhost:9001/postest \
+curl -i --request POST http://localhost:9001/postest \
 -u "API_KEY:383883jef903xxxx838xxxx" \
 -H "Accept: binary/octet-stream" \
 -H "Content-Type: binary/octet-stream" \
@@ -271,7 +331,7 @@ curl --request POST http://localhost:9001/postest \
 ## Example of curl client Sending file on multipart/form-data
 
 ```
-curl -X POST http://localhost:9001/postest \
+curl -i -X POST http://localhost:9001/postest \
 -u "API_KEY:383883jef903xxxx838xxxx" \
 --form "fileupload=@files/file1.jpg" 
 

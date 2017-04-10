@@ -351,6 +351,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 
+		// Upload multipart/form-data
 		sizeMaxUpload := r.ContentLength / 1048576 ///Mb
 
 		if sizeMaxUpload > cfg.UploadSize {
