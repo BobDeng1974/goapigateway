@@ -348,3 +348,25 @@ curl -i --request POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapiga
 --data-binary "@files/file1.jpg"
 
 ```
+
+## Example Using json to tesar our post and get
+
+```
+curl -i -X POST localhost:9001/postest \
+-u API_KEY:383883jef903xxxx838xxxx \
+-H "Content-Type: application/json" \
+-H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
+-d '{"email":"jeffotoni@yes.com","password":"3838373773"}'
+
+```
+
+## Example using form data passing fields through url
+
+```
+curl -i -X POST localhost:9001/postest \
+-u API_KEY:383883jef903xxxx838xxxx \
+-H "Content-Type: application/json" \
+-H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
+-d -d "email=jefferson&password=3838373773" 
+
+```

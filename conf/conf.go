@@ -35,47 +35,83 @@
 // server directly without using lambda functions.
 // Each test can be automated, but at the beginning for didactic reasons we will do the
 // entire process manual so that we can fully understand its operation.
-package main
+package conf
 
-import (
-	"fmt"
-	"os"
+import "encoding/json"
 
-	"github.com/jeffotoni/goapigateway/lib"
+// Structure of our server configurations
+type Configs struct {
+	Domain     string `json:"domain"`
+	Process    string `json:"process"`
+	Ping       string `json:"ping"`
+	ServerPort string `json:"serverport"`
+	Host       string `json:"host"`
+	Schema     string `json:"shcema"`
+	ServerHost string `json:"serverhost"`
+	UploadSize int64  `json:"uploadsize"`
+	PathLocal  string `json:"pathlocal"`
+}
+
+// Our global variables
+var (
+	objason Configs
 )
 
-// Environment variables and keys
-func main() {
+// This method ConfigJson sets up our
+// server variables from our struct
+func ConfigJson() string {
 
-	// Command line for start and stop server
-	if len(os.Args) > 1 {
+	// Defining the values of our config
+	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "9001", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
 
-		command := os.Args[1]
+	// Converting our struct into json format
+	cjson, err := json.Marshal(data)
+	if err != nil {
+		// handle err
+	}
 
-		if command != "" {
+	return string(cjson)
+}
 
-			if command == "start" {
+// This method Config returns the objects
+// of our config so that it can be accessed
+func Config() *Configs {
 
-				// Start server
-				lib.StartTestServer()
+	// We are implementing singleton for this object,
+	// every time it is instantiated it does
+	// not redo it it only resends the object
+	if objason.Domain != "" {
 
-			} else if command == "stop" {
+		return &objason
 
-				// Stop server
-				fmt.Println("stop service...")
-
-			} else {
-
-				fmt.Println("Usage: gofileserver {start|stop}")
-			}
-
-		} else {
-
-			command = ""
-			fmt.Println("No command given")
-		}
 	} else {
 
-		fmt.Println("Usage: gofileserver {start|stop}")
+		jsonT := []byte(ConfigJson())
+		json.Unmarshal(jsonT, &objason)
+
+		return &objason
 	}
+}
+
+// This method Message is to return our messages
+// in json, ie the client will
+// receive messages in json format
+type Message struct {
+	Code int    `json:code`
+	Msg  string `json:msg`
+}
+
+// This method is a simplified abstraction
+// so that we can send them to our client
+// when making a request
+func JsonMsg(codeInt int, msgText string) string {
+
+	data := &Message{Code: codeInt, Msg: msgText}
+
+	djson, err := json.Marshal(data)
+	if err != nil {
+		// handle err
+	}
+
+	return string(djson)
 }
