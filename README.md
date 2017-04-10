@@ -257,9 +257,22 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 
 ```
 
-## Example of curl client simulating the Api Gateway Aws
+## Example of curl client Sending file in binary format
 
 ```
-curl -H 'Authorization:tyladfadiwkxceieixweiex747' --form "{}" http://localhost:9001/postest
+curl --request POST http://localhost:9001/postest \
+-u "API_KEY:383883jef903xxxx838xxxx" \
+-H "Accept: binary/octet-stream" \
+-H "Content-Type: binary/octet-stream" \
+-H "Name-File: file1.jpg" \
+--data-binary "@file1.jpg"
+
+```
+## Example of curl client Sending file on multipart/form-data
+
+```
+curl -X POST http://localhost:9001/postest \
+-u "API_KEY:383883jef903xxxx838xxxx" \
+--form "fileupload=@files/file1.jpg" 
 
 ```

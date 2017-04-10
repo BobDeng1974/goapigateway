@@ -77,7 +77,7 @@ var (
 func ConfigJson() string {
 
 	// Defining the values of our config
-	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "80", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
+	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "9001", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
 
 	// Converting our struct into json format
 	cjson, err := json.Marshal(data)
@@ -324,13 +324,27 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 	// Upload octet-stream
 	if nameFileUp != "" {
 
+		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+		existPath, _ := os.Stat(pathUpKeyUser)
+		if existPath == nil {
+			// create path
+			os.MkdirAll(pathUpKeyUser, 0777)
+		}
+
+		pathUpKeyUserFull := pathUpKeyUser + "/" + nameFileUp
+
 		// In amazon does not receive multipart / form-data only application
 		// / octet-stream ie --data-binary or instead of --form nameupload = @,
 		// then we implement the 2 forms for our upload test
-		ff, _ := os.OpenFile(cfg.PathLocal+"/"+nameFileUp, os.O_WRONLY|os.O_CREATE, 0777)
+		ff, _ := os.OpenFile(pathUpKeyUserFull, os.O_WRONLY|os.O_CREATE, 0777)
 		defer ff.Close()
 		sizef, _ := io.Copy(ff, r.Body)
 		w.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", sizef)))
+
+		color.Red("File name: %s\n", nameFileUp)
+		color.Yellow("copied: %v bytes\n", sizef)
+		color.Yellow("copied: %v Kb\n", sizef/1024)
+		color.Yellow("copied: %v Mb\n", sizef/1048576)
 
 		msgjson := JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
 		fmt.Fprintln(w, msgjson)
