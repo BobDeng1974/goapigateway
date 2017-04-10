@@ -227,6 +227,11 @@ func StartTestServer() {
 			// AWS
 			fmt.Println("AWS-Trace: ", r.Header.Get("X-Amzn-Trace-Id"))
 			fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
+			fmt.Println("x-amzn-RequestId: ", r.Header.Get("x-amzn-RequestId"))
+			fmt.Println("X-Amzn-Trace-Id: ", r.Header.Get("X-Amzn-Trace-Id"))
+			fmt.Println("X-Cache: ", r.Header.Get("X-Cache"))
+			fmt.Println("Via: ", r.Header.Get("Via"))
+			fmt.Println("X-Amz-Cf-Id: ", r.Header.Get("X-Amz-Cf-Id"))
 
 			// Some important variables
 			fmt.Println("Protocolo: ", r.Proto)
