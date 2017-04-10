@@ -336,3 +336,15 @@ curl -i -X POST http://localhost:9001/postest \
 --form "fileupload=@files/file1.jpg" 
 
 ```
+
+## Example using Api Gateway Aws
+
+```
+curl -i --request POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
+-u "API_KEY:xxxxxx38383xxxx" \
+-H "Accept: binary/octet-stream" \
+-H "Content-Type: binary/octet-stream" \
+-H "Name-File: file1.jpg" \
+--data-binary "@files/file1.jpg"
+
+```

@@ -225,7 +225,6 @@ func StartTestServer() {
 			fmt.Println("Autorization: ", r.Header.Get("Authorization"))
 
 			// AWS
-			fmt.Println("AWS-Trace: ", r.Header.Get("X-Amzn-Trace-Id"))
 			fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
 			fmt.Println("x-amzn-RequestId: ", r.Header.Get("x-amzn-RequestId"))
 			fmt.Println("X-Amzn-Trace-Id: ", r.Header.Get("X-Amzn-Trace-Id"))
