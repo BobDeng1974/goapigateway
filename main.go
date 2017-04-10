@@ -66,7 +66,7 @@ func main() {
 
 			} else {
 
-				fmt.Println("Usage: gofileserver {start|stop}")
+				fmt.Println("Usage: goapigateway {start|stop}")
 			}
 
 		} else {
@@ -76,6 +76,6 @@ func main() {
 		}
 	} else {
 
-		fmt.Println("Usage: gofileserver {start|stop}")
+		fmt.Println("Usage: goapigateway {start|stop}")
 	}
 }

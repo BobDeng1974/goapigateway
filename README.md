@@ -215,7 +215,7 @@ Body of main function UploadFileEasy
 // of curl, application / octet-stream using --data-binary
 func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 
-	cfg := Config()
+	cfg := conf.Config()
 
 	// A directory is created by
 	// the key we are simulating
@@ -229,19 +229,34 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 	// Upload octet-stream
 	if nameFileUp != "" {
 
+		pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+		existPath, _ := os.Stat(pathUpKeyUser)
+		if existPath == nil {
+			// create path
+			os.MkdirAll(pathUpKeyUser, 0777)
+		}
+
+		pathUpKeyUserFull := pathUpKeyUser + "/" + nameFileUp
+
 		// In amazon does not receive multipart / form-data only application
 		// / octet-stream ie --data-binary or instead of --form nameupload = @,
 		// then we implement the 2 forms for our upload test
-		ff, _ := os.OpenFile(cfg.PathLocal+"/"+nameFileUp, os.O_WRONLY|os.O_CREATE, 0777)
+		ff, _ := os.OpenFile(pathUpKeyUserFull, os.O_WRONLY|os.O_CREATE, 0777)
 		defer ff.Close()
 		sizef, _ := io.Copy(ff, r.Body)
 		w.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", sizef)))
 
-		msgjson := JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
+		color.Red("File name: %s\n", nameFileUp)
+		color.Yellow("copied: %v bytes\n", sizef)
+		color.Yellow("copied: %v Kb\n", sizef/1024)
+		color.Yellow("copied: %v Mb\n", sizef/1048576)
+
+		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+nameFileUp)
 		fmt.Fprintln(w, msgjson)
 
 	} else {
 
+		// Upload multipart/form-data
 		sizeMaxUpload := r.ContentLength / 1048576 ///Mb
 
 		if sizeMaxUpload > cfg.UploadSize {
@@ -306,7 +321,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 			color.Yellow("copied: %v Kb\n", sizef/1024)
 			color.Yellow("copied: %v Mb\n", sizef/1048576)
 
-			msgjson := JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
+			msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
 			fmt.Fprintln(w, msgjson)
 
 		}
@@ -314,6 +329,7 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
 
 ```
 
@@ -360,7 +376,19 @@ curl -i -X POST localhost:9001/postest \
 
 ```
 
+## Example POST text using Api Gateway Aws
+
+```
+curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
+-u API_KEY:383883jef903xxxx838xxxx \
+-H "Content-Type: application/json" \
+-H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
+-d '{"email":"jeffotoni@yes.com","password":"3838373773"}'
+
+```
+
 ## Example using form data passing fields through url
+
 
 ```
 curl -i -X POST localhost:9001/postest \
@@ -368,5 +396,17 @@ curl -i -X POST localhost:9001/postest \
 -H "Content-Type: application/json" \
 -H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
 -d -d "email=jefferson&password=3838373773" 
+
+```
+
+##Example using form data passing fields through url of Api Gateway Aws
+
+The content-type is not defined in this submission, Amazon's Api Gateway will not allow
+
+```
+curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
+-u API_KEY:383883jef903xxxx838xxxx \
+-H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
+-d 'email=jeff@&password=38xxx8w8e'
 
 ```
