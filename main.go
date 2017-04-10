@@ -205,6 +205,11 @@ func StartTestServer() {
 			fmt.Println("ContentLength: ", r.ContentLength)
 			fmt.Println("Content-type: ", r.Header.Get("Content-Type"))
 			fmt.Println("Autorization: ", r.Header.Get("Authorization"))
+
+			//AWS
+			fmt.Println("AWS-Trace: ", r.Header.Get("X-Amzn-Trace-Id"))
+			fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
+
 			fmt.Println("Protocolo: ", r.Proto)
 			fmt.Println("ProtoMajor: ", r.ProtoMajor)
 			fmt.Println("ProtoMinor: ", r.ProtoMinor)
