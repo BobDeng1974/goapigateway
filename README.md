@@ -310,7 +310,7 @@ curl -i -X POST localhost:9001/postest \
 
 ```
 
-##Example using form data passing fields through url of Api Gateway Aws
+## Example using form data passing fields through url of Api Gateway Aws
 
 The content-type is not defined in this submission, Amazon's Api Gateway will not allow
 
@@ -320,4 +320,28 @@ curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
 -H "Authorization: jeff b7d03a6947b217efb6f3ec3bd3504582" \
 -d 'email=jeff@&password=38xxx8w8e'
 
+```
+
+## We are sending in a single request fields and value of a form and a file to upload
+
+The Amazon Gateway Api unfortunately does not accept --form for only binary file uploads then it will 
+not work using the upload to Amazon.
+
+```
+curl -i --request POST localhost:9001/postest \
+-u "API_KEY:383883jef903xxxx838xxxx" \
+--form 'email=jefferson&password=3838373773' \
+--form "fileupload=@files/file1.jpg"
+```
+
+## We are sending a form with field and value and several files to upload in a same request
+
+Unfortunately Amazon does not support --form / or better multipart / form-data for sending files only --data-binary
+
+```
+curl -i --request POST localhost:9001/postest \
+-u "API_KEY:383883jef903xxxx838xxxx" \
+--form 'email=jefferson&password=3838373773' \
+--form "fileupload[]=@files/file1.jpg" \
+--form "fileupload[]=@files/file2.pdf"
 ```

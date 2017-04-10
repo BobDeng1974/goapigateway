@@ -42,6 +42,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -104,48 +105,19 @@ func StartTestServer() {
 				// When the receipt is in json format
 				if r.Header.Get("Content-Type") == "application/json" {
 
-					// Seeking our structure json test
-					objJson := JsonPostTest1{}
+					// Treating the sending body
+					// to json and transforming
+					// into objects
+					jsonRequest(w, r)
 
-					// Now let's decode what's coming in on the
-					// request in json for objects
-					// we've created with objJson
-					errj := json.NewDecoder(r.Body).Decode(&objJson)
-
-					if errj == nil {
-
-						// Seeking fields direct from our object
-						color.Yellow("When the receipt is in json format..")
-						email := objJson.Email
-						password := objJson.Password
-
-						fmt.Println("email: ", email)
-						fmt.Println("password: ", password)
-
-						msgjson := conf.JsonMsg(200, "ok")
-						fmt.Fprintln(w, msgjson)
-
-					} else {
-
-						fmt.Println("Error ..", errj)
-
-						msgjson := conf.JsonMsg(500, "error: "+fmt.Sprintf("%s", errj))
-						fmt.Fprintln(w, msgjson)
-					}
 				} else if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" { // application/x-www-form-urlencoded default POST
 
-					// Decoding when the post did not come
-					// as json, content-type came as application / x-www-form-urlencoded
-					// When the receipt is a default
-					color.Green("When the receipt is a default")
-					fmt.Println("email: ", r.PostFormValue("email"))
-					fmt.Println("password: ", r.PostFormValue("password"))
-
-					msgjson := conf.JsonMsg(200, "ok")
-					fmt.Fprintln(w, msgjson)
+					// Treating the sending
+					// body to get native
+					// postform
+					postFormRequest(w, r)
 
 				} else {
-					//else if r.Header.Get("Content-Type") == "image/jpg" || r.Header.Get("Content-Type") == "image/png" || r.Header.Get("Content-Type") == "application/octet-stream" {
 
 					// Uploading files
 					// in 2 receive formats
@@ -174,65 +146,54 @@ func StartTestServer() {
 	log.Fatal(confServer.ListenAndServe())
 }
 
-func showMsg() {
+// Method responsible for capturing what arrives
+// in the request transform into objects, what
+// it receives is a string of json type
+// coming from the client
+func jsonRequest(w http.ResponseWriter, r *http.Request) {
 
-	// Instancing config
-	cfg := conf.Config()
+	// Seeking our structure json test
+	objJson := JsonPostTest1{}
 
-	// Presentation on the
-	// screen of the start of our server
-	color.Cyan("Testing services")
-	color.Yellow("successfully...")
-	postest := cfg.Schema + "://" + cfg.ServerHost + ":" + cfg.ServerPort + "/postest"
-	color.Red("POST " + postest)
-	color.Red("GET  " + postest)
-	color.Yellow("Starting service...")
-	color.Green("Host: " + cfg.ServerHost)
-	color.Green("Schema: " + cfg.Schema)
-	color.Green("Port: " + cfg.ServerPort)
+	// Now let's decode what's coming in on the
+	// request in json for objects
+	// we've created with objJson
+	errj := json.NewDecoder(r.Body).Decode(&objJson)
+
+	if errj == nil {
+
+		// Seeking fields direct from our object
+		color.Yellow("When the receipt is in json format..")
+		fmt.Println("email: ", objJson.Email)
+		fmt.Println("password: ", objJson.Password)
+
+		msgjson := conf.JsonMsg(200, "ok")
+		fmt.Fprintln(w, msgjson)
+
+	} else {
+
+		fmt.Println("Error ..", errj)
+
+		msgjson := conf.JsonMsg(500, "error: "+fmt.Sprintf("%s", errj))
+		fmt.Fprintln(w, msgjson)
+	}
 }
 
-func showMsgHandler(r *http.Request) {
+// Method responsible for capturing what
+// arrives in the request natively using
+// PostFormValue, fields coming from the client.
+func postFormRequest(w http.ResponseWriter, r *http.Request) {
 
-	// Showing some important variables
-	// that come from our requests
-	fmt.Println("Fired method ..")
-	fmt.Println("Header: ", r.Header)
-	fmt.Println("Host: ", r.Host)
-	fmt.Println("Method: ", r.Method)
-	fmt.Println("RemoteAddr: ", r.RemoteAddr)
-	fmt.Println("RequestURI: ", r.RequestURI)
-	fmt.Println("Response: ", r.Response)
-	fmt.Println("URL: ", r.URL)
-	fmt.Println("TLS: ", r.TLS)
-	fmt.Println("Agent: ", r.UserAgent())
-	fmt.Println("ContentLength: ", r.ContentLength)
-	fmt.Println("Content-type: ", r.Header.Get("Content-Type"))
-	fmt.Println("Autorization: ", r.Header.Get("Authorization"))
+	color.Green("When the receipt is a default")
 
-	// AWS
-	fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
-	fmt.Println("x-amzn-RequestId: ", r.Header.Get("x-amzn-RequestId"))
-	fmt.Println("X-Amzn-Trace-Id: ", r.Header.Get("X-Amzn-Trace-Id"))
-	fmt.Println("X-Cache: ", r.Header.Get("X-Cache"))
-	fmt.Println("Via: ", r.Header.Get("Via"))
-	fmt.Println("X-Amz-Cf-Id: ", r.Header.Get("X-Amz-Cf-Id"))
+	// Decoding when the post did not come
+	// as json, content-type came as application / x-www-form-urlencoded
+	// When the receipt is a default
+	fmt.Println("email: ", r.PostFormValue("email"))
+	fmt.Println("password: ", r.PostFormValue("password"))
 
-	// Some important variables
-	fmt.Println("Protocolo: ", r.Proto)
-	fmt.Println("ProtoMajor: ", r.ProtoMajor)
-	fmt.Println("ProtoMinor: ", r.ProtoMinor)
-	fmt.Println("GetBody: ", r.GetBody)
-	fmt.Println("Body: ", r.Body)
-
-	// upload octet-stream
-	// Name-File
-	fmt.Println("Name-File: ", r.Header.Get("Name-File"))
-
-	// Basic authentication
-	KEY, KEY_PASS, _ := r.BasicAuth()
-	fmt.Println("KEY:", KEY, "PASS: ", KEY_PASS)
-
+	msgjson := conf.JsonMsg(200, "ok")
+	fmt.Fprintln(w, msgjson)
 }
 
 // Method UploadFileEasy responsible for simulating our types of uploads,
@@ -245,15 +206,42 @@ func UploadFileEasy(w http.ResponseWriter, r *http.Request) {
 	// This header was defined by our restful
 	// server so we can understand and know
 	// that the submitted type is a binary upload
-
 	if nameFileUp != "" {
 
 		uploadBinary(w, r)
 
 	} else {
 
-		uploadFormFile(w, r)
+		errup := r.ParseMultipartForm(100000)
+		if errup != nil {
 
+			log.Printf("Error: Content-type or submitted format is incorrect to upload MultiForm  %s\n", errup)
+			msgjson := conf.JsonMsg(500, errup.Error())
+			fmt.Fprintln(w, msgjson)
+
+			return
+		}
+
+		//get a ref to the
+		//parsed multipart form
+		multi := r.MultipartForm
+		if len(multi.File["fileupload[]"]) > 0 {
+
+			fmt.Println("size array files: ", len(multi.File["fileupload[]"]))
+
+			fmt.Printf("map %+v\n", multi.File)
+
+			// Call our method to save the
+			// sending of multiple files to disk
+			uploadFormFileMulti(w, r, multi.File["fileupload[]"])
+
+		} else {
+
+			// Upload only 1 file,
+			// saving a file to disk
+			uploadFormFile(w, r)
+
+		}
 	}
 }
 
@@ -285,7 +273,8 @@ func uploadBinary(w http.ResponseWriter, r *http.Request) {
 		ff, _ := os.OpenFile(pathUpKeyUserFull, os.O_WRONLY|os.O_CREATE, 0777)
 		defer ff.Close()
 
-		// Copying the contents of http body to our file
+		// Copying the contents of http
+		// body to our file
 		sizef, _ := io.Copy(ff, r.Body)
 
 		// Writing in our response
@@ -367,12 +356,20 @@ func uploadFormFile(w http.ResponseWriter, r *http.Request) {
 
 		pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + handler.Filename
 
-		// copy file and write
+		// create files
 		f, _ := os.OpenFile(pathUserAcess, os.O_WRONLY|os.O_CREATE, 0777)
 		defer f.Close()
 
-		// Copying the FormFile file to our local disk file
+		// Copying the FormFile file
+		// to our local disk file
 		sizef, _ := io.Copy(f, file)
+
+		// Capturing sending of the request from the
+		// sending example curl -F or --form,
+		// curl -F "email=jeff@yes.com" -F "password = 3939x9393"
+		color.Yellow("Get Form Data\n")
+		fmt.Println("email: ", r.PostFormValue("email"))
+		fmt.Println("password: ", r.PostFormValue("password"))
 
 		//To display results on server
 		name := strings.Split(handler.Filename, ".")
@@ -389,5 +386,142 @@ func uploadFormFile(w http.ResponseWriter, r *http.Request) {
 		msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", sizef)+" name file: "+handler.Filename)
 		fmt.Fprintln(w, msgjson)
 	}
+}
+
+// This method is responsible for receiving multiple
+// files from uploading and writing the various files to disk.
+func uploadFormFileMulti(w http.ResponseWriter, r *http.Request, files []*multipart.FileHeader) {
+
+	cfg := conf.Config()
+
+	fmt.Println("size array: ", len(files))
+
+	///create dir to key
+	pathUpKeyUser := cfg.PathLocal + "/" + acessekey
+
+	// Checking if the folder exists,
+	// otherwise create the folder where
+	// the files will be uploaded
+	existPath, _ := os.Stat(pathUpKeyUser)
+	if existPath == nil {
+		// create path
+		os.MkdirAll(pathUpKeyUser, 0777)
+	}
+
+	var uploadSize int64
+	nameFileString := ""
+
+	// Reading multipart.File Header to loop
+	// around the vector, and grab file by file and write to disk
+	for i, _ := range files {
+
+		file, err := files[i].Open()
+		defer file.Close()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Println("multi name: ", files[i].Filename)
+		pathUserAcess := cfg.PathLocal + "/" + acessekey + "/" + files[i].Filename
+
+		// copy file and write
+		f, _ := os.Create(pathUserAcess)
+		defer f.Close()
+
+		//copy the uploaded file to the destination file
+		if sizef, err := io.Copy(f, file); err != nil {
+
+			msgerr := fmt.Sprintf("Copy MultiForm: %s", err.Error()) + " " + fmt.Sprintf("%s", http.StatusInternalServerError)
+			msgjson := conf.JsonMsg(500, msgerr)
+			fmt.Fprintln(w, msgjson)
+			return
+
+		} else {
+
+			uploadSize += sizef
+			nameFileString = nameFileString + "; " + files[i].Filename
+		}
+	}
+
+	// Capturing sending of the request from the
+	// sending example curl -F or --form,
+	// curl -F "email=jeff@yes.com" -F "password = 3939x9393"
+	color.Yellow("Get Form Data\n")
+	fmt.Println("email: ", r.PostFormValue("email"))
+	fmt.Println("password: ", r.PostFormValue("password"))
+
+	//To display results upload
+	color.Red("File name: %s\n", nameFileString)
+	color.Yellow("size file: %v\n", uploadSize)
+	color.Yellow("allowed: %v\n", cfg.UploadSize)
+
+	msgjson := conf.JsonMsg(200, "ok upload size: "+fmt.Sprintf("%d bytes are recieved.\n", uploadSize)+" name file: "+nameFileString)
+	fmt.Fprintln(w, msgjson)
+}
+
+// Only presents our
+// environment variables
+func showMsg() {
+
+	// Instancing config
+	cfg := conf.Config()
+
+	// Presentation on the
+	// screen of the start of our server
+	color.Cyan("Testing services")
+	color.Yellow("successfully...")
+	postest := cfg.Schema + "://" + cfg.ServerHost + ":" + cfg.ServerPort + "/postest"
+	color.Red("POST " + postest)
+	color.Red("GET  " + postest)
+	color.Yellow("Starting service...")
+	color.Green("Host: " + cfg.ServerHost)
+	color.Green("Schema: " + cfg.Schema)
+	color.Green("Port: " + cfg.ServerPort)
+}
+
+// Presenting on the screen some of
+// the variables that we will need
+// to handle when receiving a requisition
+func showMsgHandler(r *http.Request) {
+
+	// Showing some important variables
+	// that come from our requests
+	fmt.Println("Fired method ..")
+	fmt.Println("Header: ", r.Header)
+	fmt.Println("Host: ", r.Host)
+	fmt.Println("Method: ", r.Method)
+	fmt.Println("RemoteAddr: ", r.RemoteAddr)
+	fmt.Println("RequestURI: ", r.RequestURI)
+	fmt.Println("Response: ", r.Response)
+	fmt.Println("URL: ", r.URL)
+	fmt.Println("TLS: ", r.TLS)
+	fmt.Println("Agent: ", r.UserAgent())
+	fmt.Println("ContentLength: ", r.ContentLength)
+	fmt.Println("Content-type: ", r.Header.Get("Content-Type"))
+	fmt.Println("Autorization: ", r.Header.Get("Authorization"))
+
+	// AWS
+	fmt.Println("AWS-Api-Id: ", r.Header.Get("X-Amzn-Apigateway-Api-Id"))
+	fmt.Println("x-amzn-RequestId: ", r.Header.Get("x-amzn-RequestId"))
+	fmt.Println("X-Amzn-Trace-Id: ", r.Header.Get("X-Amzn-Trace-Id"))
+	fmt.Println("X-Cache: ", r.Header.Get("X-Cache"))
+	fmt.Println("Via: ", r.Header.Get("Via"))
+	fmt.Println("X-Amz-Cf-Id: ", r.Header.Get("X-Amz-Cf-Id"))
+
+	// Some important variables
+	fmt.Println("Protocolo: ", r.Proto)
+	fmt.Println("ProtoMajor: ", r.ProtoMajor)
+	fmt.Println("ProtoMinor: ", r.ProtoMinor)
+	fmt.Println("GetBody: ", r.GetBody)
+	fmt.Println("Body: ", r.Body)
+
+	// upload octet-stream
+	// Name-File
+	fmt.Println("Name-File: ", r.Header.Get("Name-File"))
+
+	// Basic authentication
+	KEY, KEY_PASS, _ := r.BasicAuth()
+	fmt.Println("KEY:", KEY, "PASS: ", KEY_PASS)
 
 }
