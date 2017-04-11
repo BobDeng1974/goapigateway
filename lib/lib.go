@@ -87,18 +87,35 @@ func StartTestServer() {
 	// screen message
 	showMsg()
 
+	// Our redirect to https: will not work, it will not overwrite the url,
+	// so we will disable ..
+	//
+	// He listens on port 80 but we will not actually let him run,
+	// we omit to close the connection.
+	/**
 	if cfg.Schema == "https" {
 
 		// This method will only serve to redirect everything you get
 		// on port 80 to port 443, we will ensure that all access
 		// will come from https
 		go http.ListenAndServe(":"+cfg.PortRedirect, http.HandlerFunc(redirect))
-	}
+	}*/
 
 	///create route
 	router := mux.NewRouter().StrictSlash(true)
 
-	//router.Headers("Content-Type", "application/json", "X-Requested-With", "XMLHttpRequest")
+	// Opening an escape port for a subdomain
+	routerT := mux.NewRouter().StrictSlash(true)
+
+	// This handler is that we will test all the possibilities
+	// that it can receive when the method is post coming from the api gateway of aws
+	routerT.
+		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
+
+			fmt.Println("Subdomain " + "http://" + r.Host + r.URL.Path)
+			msgjson := conf.JsonMsg(200, "You have entered the development environment")
+			fmt.Fprintln(w, msgjson)
+		})
 
 	// Every time trying to access our api without a
 	// method it fires to the root and sends a welcome message
@@ -186,7 +203,7 @@ func StartTestServer() {
 		// Config to upload our server
 		confServerHttp = &http.Server{
 
-			Handler: router,
+			Handler: routerT,
 			Addr:    cfg.Host + ":9001",
 
 			// Good idea, good live!!!
@@ -227,9 +244,9 @@ func StartTestServer() {
 
 		log.Fatal(confServerHttp.ListenAndServe())
 	}
-
 }
 
+// Will not work with https
 // Redirecting everything that arrives on port 80 to 443
 func redirect(w http.ResponseWriter, req *http.Request) {
 
