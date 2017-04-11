@@ -62,7 +62,7 @@ var (
 func ConfigJson() string {
 
 	// Defining the values of our config
-	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "9001", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
+	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "443", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
 
 	// Converting our struct into json format
 	cjson, err := json.Marshal(data)

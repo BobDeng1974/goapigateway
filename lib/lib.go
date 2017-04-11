@@ -38,6 +38,7 @@
 package lib
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -70,6 +71,22 @@ type JsonPostTest1 struct {
 	Password string `json:"password" binding:"required"`
 }
 
+
+func redirect(w http.ResponseWriter, req *http.Request) {
+
+    // remove/add not default ports from req.Host
+    target := "https://" + req.Host + req.URL.Path 
+    if len(req.URL.RawQuery) > 0 {
+        target += "?" + req.URL.RawQuery
+    }
+
+    log.Printf("redirect to: %s", target)
+
+    http.Redirect(w, req, target,
+            // see @andreiavrammsd comment: often 307 > 301
+            http.StatusTemporaryRedirect)
+}
+
 // This method StartTestServer that will start our server,
 // and mount our handler so we can work everything
 // that arrives and everything that can come out.
@@ -81,6 +98,9 @@ func StartTestServer() {
 	// Displaying server
 	// screen message
 	showMsg()
+
+
+	go http.ListenAndServe(":80", http.HandlerFunc(redirect))
 
 	///create route
 	router := mux.NewRouter().StrictSlash(true)
@@ -95,6 +115,8 @@ func StartTestServer() {
 	// that it can receive when the method is post coming from the api gateway of aws
 	router.
 		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
+		
+			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 
 			// Showing the objects of the
 			// http.request method
@@ -132,18 +154,35 @@ func StartTestServer() {
 			}
 		})
 
+	 cfgs := &tls.Config{
+	        MinVersion:               tls.VersionTLS12,
+        	CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+	        PreferServerCipherSuites: true,
+	        CipherSuites: []uint16{
+        	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+            	tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+            	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+        	},
+   	 }
+
 	// Config to upload our server
 	confServer = &http.Server{
 
 		Handler: router,
 		Addr:    cfg.Host + ":" + cfg.ServerPort,
+	
+		TLSConfig:    cfgs,
+	        TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 
 		// Good idea, good live!!!
 		//WriteTimeout: 10 * time.Second,
 		//ReadTimeout:  10 * time.Second,
 	}
 
-	log.Fatal(confServer.ListenAndServe())
+	//log.Fatal(confServer.ListenAndServe())
+	log.Fatal(confServer.ListenAndServeTLS("/etc/ssl/s3wf.com/godaddy/28356f0d4c3213fc.crt","/etc/ssl/s3wf.com/godaddy/s3apis.key"))
+
 }
 
 // Method responsible for capturing what arrives
