@@ -49,7 +49,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
@@ -58,11 +57,12 @@ import (
 
 // Our global variables
 var (
-	err             error
-	returns         string
-	confServerHttp  *http.Server
-	confServerHttps *http.Server
-	AUTHORIZATION   = `bc8c154ebabc6f3da724e9x5fef79238`
+	err                error
+	returns            string
+	confServerHttp     *http.Server
+	confServerHttps    *http.Server
+	confServerHttpTest *http.Server
+	AUTHORIZATION      = `bc8c154ebabc6f3da724e9x5fef79238`
 
 	// A directory is created by
 	// the key we are simulating
@@ -92,28 +92,39 @@ func StartTestServer() {
 	//
 	// He listens on port 80 but we will not actually let him run,
 	// we omit to close the connection.
-	/**
 	if cfg.Schema == "https" {
 
 		// This method will only serve to redirect everything you get
 		// on port 80 to port 443, we will ensure that all access
 		// will come from https
 		go http.ListenAndServe(":"+cfg.PortRedirect, http.HandlerFunc(redirect))
-	}*/
+	}
 
 	///create route
 	router := mux.NewRouter().StrictSlash(true)
 
-	// Opening an escape port for a subdomain
-	routerT := mux.NewRouter().StrictSlash(true)
+	// Opening an escape port for Homologation
+	rTest := mux.NewRouter().StrictSlash(true)
 
+	// Homologation
 	// This handler is that we will test all the possibilities
 	// that it can receive when the method is post coming from the api gateway of aws
-	routerT.
+	rTest.
 		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
 
+			fmt.Println("Homologation Environment")
 			fmt.Println("Subdomain " + "http://" + r.Host + r.URL.Path)
-			msgjson := conf.JsonMsg(200, "You have entered the development environment")
+
+			// Showing the objects of the
+			// http.request method
+			showMsgHandler(r)
+
+			// Executes all the functions
+			// of the request,
+			// get, post etc.
+			allBodyExec(w, r)
+
+			msgjson := conf.JsonMsg(200, "Homologation")
 			fmt.Fprintln(w, msgjson)
 		})
 
@@ -132,36 +143,11 @@ func StartTestServer() {
 			// http.request method
 			showMsgHandler(r)
 
-			if r.Method == "POST" || r.Method == "PUT" || r.Method == "GET" {
+			// Executes all the functions
+			// of the request,
+			// get, post etc.
+			allBodyExec(w, r)
 
-				// When the receipt is in json format
-				if r.Header.Get("Content-Type") == "application/json" {
-
-					// Treating the sending body
-					// to json and transforming
-					// into objects
-					jsonRequest(w, r)
-
-				} else if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" { // application/x-www-form-urlencoded default POST
-
-					// Treating the sending
-					// body to get native
-					// postform
-					postFormRequest(w, r)
-
-				} else {
-
-					// Uploading files
-					// in 2 receive formats
-					UploadFileEasy(w, r)
-
-				}
-
-			} else {
-
-				msgjson := conf.JsonMsg(500, "Not authorized / Allowed method POST")
-				fmt.Fprintln(w, msgjson)
-			}
 		})
 
 	if cfg.Schema == "https" {
@@ -200,17 +186,6 @@ func StartTestServer() {
 			//ReadTimeout:  10 * time.Second,
 		}
 
-		// Config to upload our server
-		confServerHttp = &http.Server{
-
-			Handler: routerT,
-			Addr:    cfg.Host + ":9001",
-
-			// Good idea, good live!!!
-			//WriteTimeout: 10 * time.Second,
-			//ReadTimeout:  10 * time.Second,
-		}
-
 	} else {
 
 		// Config to upload our server
@@ -225,6 +200,17 @@ func StartTestServer() {
 		}
 	}
 
+	// Config to upload our server
+	confServerHttpTest = &http.Server{
+
+		Handler: rTest,
+		Addr:    cfg.Host + ":9001",
+
+		// Good idea, good live!!!
+		//WriteTimeout: 10 * time.Second,
+		//ReadTimeout:  10 * time.Second,
+	}
+
 	// Defining whether it is https or http,
 	// if it is http leave the calls
 	// without access keys
@@ -236,13 +222,47 @@ func StartTestServer() {
 
 		}()
 
-		time.Sleep(time.Second)
-
-		log.Fatal(confServerHttp.ListenAndServe())
+		log.Fatal(confServerHttpTest.ListenAndServe())
 
 	} else {
 
-		log.Fatal(confServerHttp.ListenAndServe())
+		go func() { log.Fatal(confServerHttp.ListenAndServe()) }()
+
+		log.Fatal(confServerHttpTest.ListenAndServe())
+	}
+}
+
+func allBodyExec(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "POST" || r.Method == "PUT" || r.Method == "GET" {
+
+		// When the receipt is in json format
+		if r.Header.Get("Content-Type") == "application/json" {
+
+			// Treating the sending body
+			// to json and transforming
+			// into objects
+			jsonRequest(w, r)
+
+		} else if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" { // application/x-www-form-urlencoded default POST
+
+			// Treating the sending
+			// body to get native
+			// postform
+			postFormRequest(w, r)
+
+		} else {
+
+			// Uploading files
+			// in 2 receive formats
+			UploadFileEasy(w, r)
+
+		}
+
+	} else {
+
+		msgjson := conf.JsonMsg(500, "Not authorized / Allowed method POST")
+		fmt.Fprintln(w, msgjson)
 	}
 }
 
@@ -251,16 +271,15 @@ func StartTestServer() {
 func redirect(w http.ResponseWriter, req *http.Request) {
 
 	// remove/add not default ports from req.Host
-	target := "https://" + req.Host + req.URL.Path
+	target := "http://" + req.Host + ":4001" + req.URL.Path
 	if len(req.URL.RawQuery) > 0 {
 		target += "?" + req.URL.RawQuery
 	}
 
 	log.Printf("redirect to: %s", target)
 
-	http.Redirect(w, req, target,
-		// see @andreiavrammsd comment: often 307 > 301
-		http.StatusTemporaryRedirect)
+	// Redirection
+	http.Redirect(w, req, target, http.StatusTemporaryRedirect)
 }
 
 // Method responsible for capturing what arrives
