@@ -204,7 +204,7 @@ func StartTestServer() {
 	confServerHttpTest = &http.Server{
 
 		Handler: rTest,
-		Addr:    cfg.Host + ":9001",
+		Addr:    cfg.Host + ":4001",
 
 		// Good idea, good live!!!
 		//WriteTimeout: 10 * time.Second,
@@ -271,12 +271,15 @@ func allBodyExec(w http.ResponseWriter, r *http.Request) {
 func redirect(w http.ResponseWriter, req *http.Request) {
 
 	// remove/add not default ports from req.Host
-	target := "http://" + req.Host + ":4001" + req.URL.Path
+	target := "http://app." + req.Host + ":4001" + req.URL.Path
 	if len(req.URL.RawQuery) > 0 {
 		target += "?" + req.URL.RawQuery
 	}
 
 	log.Printf("redirect to: %s", target)
+
+	msgjson := conf.JsonMsg(500, "This host is not allowed")
+	fmt.Fprintln(w, msgjson)
 
 	// Redirection
 	http.Redirect(w, req, target, http.StatusTemporaryRedirect)
