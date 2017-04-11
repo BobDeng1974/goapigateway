@@ -49,6 +49,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
@@ -57,10 +58,11 @@ import (
 
 // Our global variables
 var (
-	err           error
-	returns       string
-	confServer    *http.Server
-	AUTHORIZATION = `bc8c154ebabc6f3da724e9x5fef79238`
+	err             error
+	returns         string
+	confServerHttp  *http.Server
+	confServerHttps *http.Server
+	AUTHORIZATION   = `bc8c154ebabc6f3da724e9x5fef79238`
 
 	// A directory is created by
 	// the key we are simulating
@@ -71,21 +73,6 @@ var (
 type JsonPostTest1 struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
-}
-
-func redirect(w http.ResponseWriter, req *http.Request) {
-
-	// remove/add not default ports from req.Host
-	target := "https://" + req.Host + req.URL.Path
-	if len(req.URL.RawQuery) > 0 {
-		target += "?" + req.URL.RawQuery
-	}
-
-	log.Printf("redirect to: %s", target)
-
-	http.Redirect(w, req, target,
-		// see @andreiavrammsd comment: often 307 > 301
-		http.StatusTemporaryRedirect)
 }
 
 // This method StartTestServer that will start our server,
@@ -184,7 +171,7 @@ func StartTestServer() {
 		}
 
 		// Config to upload our server
-		confServer = &http.Server{
+		confServerHttps = &http.Server{
 
 			Handler:      router,
 			Addr:         cfg.Host + ":" + cfg.ServerPort,
@@ -196,10 +183,21 @@ func StartTestServer() {
 			//ReadTimeout:  10 * time.Second,
 		}
 
+		// Config to upload our server
+		confServerHttp = &http.Server{
+
+			Handler: router,
+			Addr:    cfg.Host + ":9001",
+
+			// Good idea, good live!!!
+			//WriteTimeout: 10 * time.Second,
+			//ReadTimeout:  10 * time.Second,
+		}
+
 	} else {
 
 		// Config to upload our server
-		confServer = &http.Server{
+		confServerHttp = &http.Server{
 
 			Handler: router,
 			Addr:    cfg.Host + ":" + cfg.ServerPort,
@@ -215,13 +213,37 @@ func StartTestServer() {
 	// without access keys
 	if cfg.Schema == "https" {
 
-		log.Fatal(confServer.ListenAndServeTLS(cfg.Pem, cfg.Key))
+		go func() {
+
+			log.Fatal(confServerHttps.ListenAndServeTLS(cfg.Pem, cfg.Key))
+
+		}()
+
+		time.Sleep(time.Second)
+
+		log.Fatal(confServerHttp.ListenAndServe())
 
 	} else {
 
-		log.Fatal(confServer.ListenAndServe())
+		log.Fatal(confServerHttp.ListenAndServe())
 	}
 
+}
+
+// Redirecting everything that arrives on port 80 to 443
+func redirect(w http.ResponseWriter, req *http.Request) {
+
+	// remove/add not default ports from req.Host
+	target := "https://" + req.Host + req.URL.Path
+	if len(req.URL.RawQuery) > 0 {
+		target += "?" + req.URL.RawQuery
+	}
+
+	log.Printf("redirect to: %s", target)
+
+	http.Redirect(w, req, target,
+		// see @andreiavrammsd comment: often 307 > 301
+		http.StatusTemporaryRedirect)
 }
 
 // Method responsible for capturing what arrives
