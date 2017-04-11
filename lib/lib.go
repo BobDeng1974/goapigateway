@@ -128,6 +128,7 @@ func StartTestServer() {
 			fmt.Fprintln(w, msgjson)
 		})
 
+	// Production
 	// Every time trying to access our api without a
 	// method it fires to the root and sends a welcome message
 	router.Handle("/", http.FileServer(http.Dir("msg")))
@@ -150,6 +151,9 @@ func StartTestServer() {
 
 		})
 
+	// Now it is possible to get on port 443 using https,
+	// we did a check when it is https, the system
+	// parameterizes config as needed
 	if cfg.Schema == "https" {
 
 		// .crt — Alternate synonymous most common among *nix systems .pem (pubkey).
