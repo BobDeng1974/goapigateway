@@ -79,8 +79,8 @@ func ConfigJson() string {
 		UploadSize:   100,
 		PathLocal:    "uploads",
 		PortRedirect: "80",
-		Pem:          "../certs/28356f0d4c3213fc.crt",
-		Key:          "../certs/s3apis.key",
+		Pem:          "../certs/pem.crt",
+		Key:          "../certs/key.key",
 	}
 
 	// Converting our struct into json format
