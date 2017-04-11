@@ -26,10 +26,12 @@
 // GET so that we can test the various ways to send files to a restful server.
 // Our goal is to discover the different ways upload and receive upload so that
 // we can implement our file server.
+//
 // The Amazon is allowed to send binaries to its Api Gateway,
 // and it is possible to use lambda functions so that the entire upload process is done by the
 // Api Gateway without necessarily needing to send direct to a restful server,
 // but our goal is to send direct to our server Restful
+//
 // We will use curl as our client to test our submissions and we will also use
 // the Amazon Api Gateway and see if it is possible to send a binary to our restful
 // server directly without using lambda functions.
@@ -38,7 +40,7 @@
 package lib
 
 import (
-	"crypto/tls"
+	"crypto/tls" //https
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,20 +73,19 @@ type JsonPostTest1 struct {
 	Password string `json:"password" binding:"required"`
 }
 
-
 func redirect(w http.ResponseWriter, req *http.Request) {
 
-    // remove/add not default ports from req.Host
-    target := "https://" + req.Host + req.URL.Path 
-    if len(req.URL.RawQuery) > 0 {
-        target += "?" + req.URL.RawQuery
-    }
+	// remove/add not default ports from req.Host
+	target := "https://" + req.Host + req.URL.Path
+	if len(req.URL.RawQuery) > 0 {
+		target += "?" + req.URL.RawQuery
+	}
 
-    log.Printf("redirect to: %s", target)
+	log.Printf("redirect to: %s", target)
 
-    http.Redirect(w, req, target,
-            // see @andreiavrammsd comment: often 307 > 301
-            http.StatusTemporaryRedirect)
+	http.Redirect(w, req, target,
+		// see @andreiavrammsd comment: often 307 > 301
+		http.StatusTemporaryRedirect)
 }
 
 // This method StartTestServer that will start our server,
@@ -99,8 +100,10 @@ func StartTestServer() {
 	// screen message
 	showMsg()
 
-
-	go http.ListenAndServe(":80", http.HandlerFunc(redirect))
+	// This method will only serve to redirect everything you get
+	// on port 80 to port 443, we will ensure that all access
+	// will come from https
+	go http.ListenAndServe(":"+cfg.PortRedirect, http.HandlerFunc(redirect))
 
 	///create route
 	router := mux.NewRouter().StrictSlash(true)
@@ -115,7 +118,7 @@ func StartTestServer() {
 	// that it can receive when the method is post coming from the api gateway of aws
 	router.
 		HandleFunc("/postest", func(w http.ResponseWriter, r *http.Request) {
-		
+
 			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 
 			// Showing the objects of the
@@ -154,26 +157,35 @@ func StartTestServer() {
 			}
 		})
 
-	 cfgs := &tls.Config{
-	        MinVersion:               tls.VersionTLS12,
-        	CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-	        PreferServerCipherSuites: true,
-	        CipherSuites: []uint16{
-        	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-            	tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-            	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-        	},
-   	 }
+	// .crt — Alternate synonymous most common among *nix systems .pem (pubkey).
+	// .csr — Certficate Signing Requests (synonymous most common among *nix systems).
+	// .cer — Microsoft alternate form of .crt, you can use MS to convert .crt to .cer (DER encoded .cer, or base64[PEM] encoded .cer).
+	// .pem = The PEM extension is used for different types of X.509v3 files which contain ASCII (Base64) armored data prefixed with a «—– BEGIN …» line. These files may also bear the cer or the crt extension.
+	// .der — The DER extension is used for binary DER encoded certificates.
+	//
+	// Setting our tls to accept
+	// our .key and .crt keys.
+	cfgs := &tls.Config{
+
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+	}
 
 	// Config to upload our server
 	confServer = &http.Server{
 
 		Handler: router,
 		Addr:    cfg.Host + ":" + cfg.ServerPort,
-	
+
 		TLSConfig:    cfgs,
-	        TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 
 		// Good idea, good live!!!
 		//WriteTimeout: 10 * time.Second,
@@ -181,7 +193,7 @@ func StartTestServer() {
 	}
 
 	//log.Fatal(confServer.ListenAndServe())
-	log.Fatal(confServer.ListenAndServeTLS("/etc/ssl/s3wf.com/godaddy/28356f0d4c3213fc.crt","/etc/ssl/s3wf.com/godaddy/s3apis.key"))
+	log.Fatal(confServer.ListenAndServeTLS(cfg.Pem, cfg.Key))
 
 }
 

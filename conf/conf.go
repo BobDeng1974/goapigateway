@@ -26,10 +26,12 @@
 // GET so that we can test the various ways to send files to a restful server.
 // Our goal is to discover the different ways upload and receive upload so that
 // we can implement our file server.
+//
 // The Amazon is allowed to send binaries to its Api Gateway,
 // and it is possible to use lambda functions so that the entire upload process is done by the
 // Api Gateway without necessarily needing to send direct to a restful server,
 // but our goal is to send direct to our server Restful
+//
 // We will use curl as our client to test our submissions and we will also use
 // the Amazon Api Gateway and see if it is possible to send a binary to our restful
 // server directly without using lambda functions.
@@ -41,15 +43,18 @@ import "encoding/json"
 
 // Structure of our server configurations
 type Configs struct {
-	Domain     string `json:"domain"`
-	Process    string `json:"process"`
-	Ping       string `json:"ping"`
-	ServerPort string `json:"serverport"`
-	Host       string `json:"host"`
-	Schema     string `json:"shcema"`
-	ServerHost string `json:"serverhost"`
-	UploadSize int64  `json:"uploadsize"`
-	PathLocal  string `json:"pathlocal"`
+	Domain       string `json:"domain"`
+	Process      string `json:"process"`
+	Ping         string `json:"ping"`
+	ServerPort   string `json:"serverport"`
+	Host         string `json:"host"`
+	Schema       string `json:"shcema"`
+	ServerHost   string `json:"serverhost"`
+	UploadSize   int64  `json:"uploadsize"`
+	PathLocal    string `json:"pathlocal"`
+	PortRedirect string `json:"portredirect"`
+	Pem          string `json:"pem"`
+	Key          string `json:key`
 }
 
 // Our global variables
@@ -62,7 +67,21 @@ var (
 func ConfigJson() string {
 
 	// Defining the values of our config
-	data := &Configs{Domain: "localhost", Process: "2", Ping: "ok", ServerPort: "443", Host: "", Schema: "http", ServerHost: "localhost", UploadSize: 100, PathLocal: "uploads"}
+	data := &Configs{
+
+		Domain:       "localhost",
+		Process:      "2",
+		Ping:         "ok",
+		ServerPort:   "443",
+		Host:         "",
+		Schema:       "https",
+		ServerHost:   "localhost",
+		UploadSize:   100,
+		PathLocal:    "uploads",
+		PortRedirect: "80",
+		Pem:          "../certs/28356f0d4c3213fc.crt",
+		Key:          "../certs/s3apis.key",
+	}
 
 	// Converting our struct into json format
 	cjson, err := json.Marshal(data)

@@ -365,7 +365,7 @@ curl -i -X POST localhost:9001/postest \
 
 ```
 
-## Example POST text using Api Gateway Aws
+## Example Post text using Api Gateway Aws
 
 ```
 curl -i -X POST https://xxxxxx.execute-api.us-xxx-x.amazonaws.com/goapigateway \
