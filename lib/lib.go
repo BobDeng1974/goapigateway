@@ -100,10 +100,13 @@ func StartTestServer() {
 	// screen message
 	showMsg()
 
-	// This method will only serve to redirect everything you get
-	// on port 80 to port 443, we will ensure that all access
-	// will come from https
-	go http.ListenAndServe(":"+cfg.PortRedirect, http.HandlerFunc(redirect))
+	if cfg.Schema == "https" {
+
+		// This method will only serve to redirect everything you get
+		// on port 80 to port 443, we will ensure that all access
+		// will come from https
+		go http.ListenAndServe(":"+cfg.PortRedirect, http.HandlerFunc(redirect))
+	}
 
 	///create route
 	router := mux.NewRouter().StrictSlash(true)
@@ -157,43 +160,67 @@ func StartTestServer() {
 			}
 		})
 
-	// .crt — Alternate synonymous most common among *nix systems .pem (pubkey).
-	// .csr — Certficate Signing Requests (synonymous most common among *nix systems).
-	// .cer — Microsoft alternate form of .crt, you can use MS to convert .crt to .cer (DER encoded .cer, or base64[PEM] encoded .cer).
-	// .pem = The PEM extension is used for different types of X.509v3 files which contain ASCII (Base64) armored data prefixed with a «—– BEGIN …» line. These files may also bear the cer or the crt extension.
-	// .der — The DER extension is used for binary DER encoded certificates.
-	//
-	// Setting our tls to accept
-	// our .key and .crt keys.
-	cfgs := &tls.Config{
+	if cfg.Schema == "https" {
 
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-		},
+		// .crt — Alternate synonymous most common among *nix systems .pem (pubkey).
+		// .csr — Certficate Signing Requests (synonymous most common among *nix systems).
+		// .cer — Microsoft alternate form of .crt, you can use MS to convert .crt to .cer (DER encoded .cer, or base64[PEM] encoded .cer).
+		// .pem = The PEM extension is used for different types of X.509v3 files which contain ASCII (Base64) armored data prefixed with a «—– BEGIN …» line. These files may also bear the cer or the crt extension.
+		// .der — The DER extension is used for binary DER encoded certificates.
+		//
+		// Setting our tls to accept
+		// our .key and .crt keys.
+		cfgs := &tls.Config{
+
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+
+		// Config to upload our server
+		confServer = &http.Server{
+
+			Handler:      router,
+			Addr:         cfg.Host + ":" + cfg.ServerPort,
+			TLSConfig:    cfgs,
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+
+			// Good idea, good live!!!
+			//WriteTimeout: 10 * time.Second,
+			//ReadTimeout:  10 * time.Second,
+		}
+
+	} else {
+
+		// Config to upload our server
+		confServer = &http.Server{
+
+			Handler: router,
+			Addr:    cfg.Host + ":" + cfg.ServerPort,
+
+			// Good idea, good live!!!
+			//WriteTimeout: 10 * time.Second,
+			//ReadTimeout:  10 * time.Second,
+		}
 	}
 
-	// Config to upload our server
-	confServer = &http.Server{
+	// Defining whether it is https or http,
+	// if it is http leave the calls
+	// without access keys
+	if cfg.Schema == "https" {
 
-		Handler: router,
-		Addr:    cfg.Host + ":" + cfg.ServerPort,
+		log.Fatal(confServer.ListenAndServeTLS(cfg.Pem, cfg.Key))
 
-		TLSConfig:    cfgs,
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+	} else {
 
-		// Good idea, good live!!!
-		//WriteTimeout: 10 * time.Second,
-		//ReadTimeout:  10 * time.Second,
+		log.Fatal(confServer.ListenAndServe())
 	}
-
-	//log.Fatal(confServer.ListenAndServe())
-	log.Fatal(confServer.ListenAndServeTLS(cfg.Pem, cfg.Key))
 
 }
 
