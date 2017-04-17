@@ -18,10 +18,10 @@ Each test can be automated, but at the beginning for didactic reasons we will do
 In golang everything becomes simpler, check the call to go up the door of our rest server, using http protocol
 
 ```
+Native
 http.ListenAndServe(":8080", nil)
 
 Using Mux
-
 confServerHttpTest.ListenAndServe()
 
 ```
@@ -29,10 +29,10 @@ confServerHttpTest.ListenAndServe()
 To upload a port using https for example would
 
 ```
+Native
 http.ListenAndServeTLS(":8081", "cert.crt", "yourkey.key", nil)
 
 Using Mux
-
 confServerHttps.ListenAndServeTLS(server.crt, yourke.Key)
 
 ```
